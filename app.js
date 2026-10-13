@@ -129,12 +129,13 @@
                             row.className = `flex items-start gap-4 p-5 transition-opacity ${task.completed ? "opacity-50" : ""}`;
 
                             const today = new Date().toISOString().split("T")[0];
-                            const dueClass = task.dueDate && !task.completed && task.dueDate < today
-                            ? "text-red-500" : "text-gray-700";
+                            const isOverdue = !task.completed && task.dueDate && task.dueDate < today;
+                            const dueClass = isOverdue ? "text-red-500" : "text-gray-700";
+                            const statusText = task.completed ? "Completed" : isOverdue ? "Overdue" : "Pending";
+                            const statusClass = task.completed ? "text-green-600" : isOverdue ? "text-red-500" : "text-blue-600";
 
                             row.innerHTML = `
                             <input type="checkbox" class="select-cb mt-1 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" ${selectedIds.has(task.id) ? "checked" : ""}>
-                            <input type="checkbox" class="complete-cb mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" ${task.completed ? "checked" : ""}>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center gap-2">
                                 <span class="text-xs font-bold px-2 py-0.5 rounded ${
@@ -148,10 +149,11 @@
                                 <p class="text-sm text-gray-500 mt-1">${task.description || "No description"}</p>
                                 <div class="flex items-center gap-4 mt-3 text-xs">
                                 <span class="text-gray-400">DUE <span class="${dueClass} font-medium">${task.dueDate || "—"}</span></span>
-                                <span class="text-gray-400">STATUS <span class="${task.completed ? "text-green-600" : "text-blue-600"} font-medium">${task.completed ? "Completed" : "Pending"}</span></span>
+                                <span class="text-gray-400">STATUS <span class="${statusClass} font-medium">${statusText}</span></span>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
+                                <button class="complete-btn text-sm text-green-600 hover:text-green-700 font-medium">${task.completed ? "Undo" : "Complete"}</button>
                                 <button class="edit-btn text-sm text-gray-500 hover:text-gray-700 font-medium">Edit</button>
                                 <button class="delete-btn text-sm text-red-500 hover:text-red-700 font-medium">Delete</button>
                             </div>
@@ -210,7 +212,7 @@
                         }
 
                         // Complete / Undo
-                        if (e.target.classList.contains("complete-cb")) {
+                        if (e.target.classList.contains("complete-btn")) {
                             const task = tasks.find(t => t.id === id);
                             if (task) task.completed = !task.completed;
                             save(); render();
@@ -314,5 +316,56 @@
                         dialog.close();
                         });
 
-                        // Initializer
+                        // display
                         render();
+
+                       // SHORTCUTS
+                        function openNewTaskForm() {
+                        editingId = null;
+                        form.reset();
+                        document.querySelector("#my-dialog h2").textContent = "Add Task";
+                        form.querySelector('[type="submit"]').textContent = "Add Task";
+                        dialog.showModal();
+                        }
+
+                        document.addEventListener("keydown", (e) => {
+                        const el = e.target;
+                        const isTyping =
+                            el.tagName === "TEXTAREA" ||
+                            el.tagName === "SELECT" ||
+                            el.isContentEditable ||
+                            (el.tagName === "INPUT" &&
+                            !["checkbox", "radio", "button", "submit"].includes(el.type));
+                        const hasModifier = e.ctrlKey || e.metaKey || e.altKey;
+
+                        // task submissin 
+                        if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && dialog.open) {
+                            e.preventDefault();
+                            form.requestSubmit();
+                            return;
+                        }
+
+                        // close modal shortcut
+                        if (e.key === "Escape" && dialog.open) {
+                            e.preventDefault();
+                            editingId = null;
+                            dialog.close();
+                            return;
+                        }
+
+                        // shortcut  ot working
+                        if (dialog.open || isTyping || hasModifier) return;
+
+                        // "/" shortcut
+                        if (e.key === "/") {
+                            e.preventDefault();
+                            searchInput.focus();
+                            return;
+                        }
+
+                        // "n" shortcut
+                        if (e.key.toLowerCase() === "n") {
+                            e.preventDefault();
+                            openNewTaskForm();
+                        }
+                        });
